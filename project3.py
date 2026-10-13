@@ -5,8 +5,11 @@ import numpy as np
 import joblib
 
 #loading the dataset
-dataset=pd.read_csv("C:/Users/User/Desktop/fast_food_cheat_meal_workout_burn.csv")
+dataset=pd.read_csv("fast_food_cheat_meal_workout_burn.csv")  
 he=dataset.head(3)
+
+#NOTE: the result values written in the comments below were noted from the OLD run.
+#After re-running the script, check the printed results at the end of each section.
 
 #Phase 1
 
@@ -162,7 +165,8 @@ x=dataset.drop(columns=["net_caloric_surplus","cycling_burn_time_min",
 "walking_burn_time_min","running_burn_time_min",
 "hiit_burn_time_min","thermic_effect_calories",
 "fast_food_chain","meal_category",
-"consumer_gender","fitness_level"])
+"consumer_gender","fitness_level",
+"workout_shock_tier"])  
 
 y=dataset["running_burn_time_min"]
 
@@ -187,7 +191,7 @@ score=le.score(x_test,y_test)*100
 from sklearn.ensemble import RandomForestRegressor
 
 #making the model
-rf=RandomForestRegressor()
+rf=RandomForestRegressor(random_state=42) 
 rf.fit(x_train,y_train)
 
 #checking the score
@@ -227,6 +231,12 @@ r2=r2_score(y_test,rf.predict(x_test))
 #0.9937956075481428
 r2=r2_score(y_test,dt.predict(x_test))
 #0.9883844720617744
+
+# NEW: printing all regression results together
+print("---------------- Regression Results ----------------")
+for name,model in [("Linear Regression",le),("Random Forest Regression",rf),("Decision Tree Regression",dt)]:
+    pred=model.predict(x_test)
+    print(name,"| R2:",round(r2_score(y_test,pred),4),"| MAE:",round(mean_absolute_error(y_test,pred),3),"| MSE:",round(mean_squared_error(y_test,pred),3))
 
 # Graphs
 #making the linear regression graph
@@ -280,7 +290,7 @@ x_test_scaled=ss.transform(x_test)
 from sklearn.linear_model import LogisticRegression
 
 #making the model
-lr=LogisticRegression()
+lr=LogisticRegression(max_iter=1000)   # UPDATED: max_iter=1000 (same as the cross validation below, avoids convergence warning)
 lr.fit(x_train_scaled,y_train)
 
 #Checking the socre
@@ -298,7 +308,7 @@ cv_score.sort()
 #[88.125    88.515625 89.21875  89.921875 90.234375]
 
 #Maiking the Confussion Matrix
-from sklearn.metrics import confusion_matrix,precision_score,recall_score,f1_score
+from sklearn.metrics import confusion_matrix,precision_score,recall_score,f1_score,accuracy_score   # UPDATED: accuracy_score added
 
 #making the metrixs
 cf=confusion_matrix(y_test,lr.predict(x_test_scaled))
@@ -322,7 +332,7 @@ lr_f1=f1_score(y_test,lr.predict(x_test_scaled),average='weighted')*100
 from sklearn.tree import DecisionTreeClassifier
 
 #Making the Model
-dtc=DecisionTreeClassifier(criterion='entropy',max_depth=6,splitter='best')
+dtc=DecisionTreeClassifier(criterion='entropy',max_depth=6,splitter='best',random_state=42)   # UPDATED: random_state added
 dtc.fit(x_train_scaled,y_train)
 
 #Checking the score
@@ -338,7 +348,7 @@ df={"criterion":["gini","entropy","log_loss"],
     "max_depth":[i for i in range(2,20)]}
 
 #making the model and fit
-gd=GridSearchCV(DecisionTreeClassifier(),param_grid=df)
+gd=GridSearchCV(DecisionTreeClassifier(random_state=42),param_grid=df)   # UPDATED: random_state added
 gd.fit(x_train_scaled,y_train)
 
 #seeing the best parameter
@@ -354,7 +364,7 @@ from sklearn.tree import plot_tree
 #plot_tree(dtc)
 
 #checking the cross validation
-cv_score=cross_val_score(DecisionTreeClassifier(max_depth=6),x_train_scaled,y_train,cv=5)
+cv_score=cross_val_score(DecisionTreeClassifier(max_depth=6,random_state=42),x_train_scaled,y_train,cv=5)   # UPDATED: random_state added
 
 #Soritng the score
 cv_score.sort()
@@ -364,7 +374,7 @@ cv_score.sort()
 from sklearn.ensemble import RandomForestClassifier
 
 #making the model
-rd=RandomForestClassifier()
+rd=RandomForestClassifier(random_state=42)   # UPDATED: random_state added
 rd.fit(x_train_scaled,y_train)
 
 #checking the score
@@ -390,11 +400,17 @@ rd_f1=f1_score(y_test,rd.predict(x_test_scaled),average='weighted')*100
 #89.72647214189868
 
 #Checking the cross validation
-cv_score=cross_val_score(RandomForestClassifier(),x_train_scaled,y_train,cv=5)
+cv_score=cross_val_score(RandomForestClassifier(random_state=42),x_train_scaled,y_train,cv=5)   # UPDATED: random_state added
 
 #sorting the score
 cv_score.sort()
 #[87.421875 87.5      88.359375 88.671875 88.828125]
+
+# NEW: printing all classification results together
+print("---------------- Classification Results ----------------")
+for name,model in [("Logistic Regression",lr),("Decision Tree Classifier",dtc),("Random Forest Classifier",rd)]:
+    pred=model.predict(x_test_scaled)
+    print(name,"| Accuracy:",round(accuracy_score(y_test,pred)*100,2),"| F1 (weighted):",round(f1_score(y_test,pred,average='weighted')*100,2))
 
 #Comapare the scores with graphs
 ##curacies = [91.125, dtc_score, rd_score]
@@ -420,14 +436,20 @@ cv_score.sort()
 #Regression
 joblib.dump(le, 'linear_regression.pkl')
 joblib.dump(rf, 'random_forest_regression.pkl')
-joblib.dump(dt, 'decession_tree_regression.pkl')
+joblib.dump(dt, 'decision_tree_regression.pkl')   # UPDATED: spelling fixed (decession -> decision)
 
 #Saiving the Scaller
 joblib.dump(ss, 'standard_scaler.pkl')
 
 #Classification
 joblib.dump(lr, 'logistic_regression.pkl')
-joblib.dump(dtc, 'decession_tree_classification.pkl')
+joblib.dump(dtc, 'decision_tree_classification.pkl')   # UPDATED: spelling fixed (decession -> decision)
 joblib.dump(rd, 'random_forest_classification.pkl')
+
+# NEW: saving the encoders and column lists (needed by the Streamlit app)
+joblib.dump(oh, 'onehot_encoder.pkl')
+joblib.dump(ll, 'label_encoder.pkl')
+joblib.dump(list(x.columns), 'reg_columns.pkl')
+joblib.dump(list(x1.columns), 'clf_columns.pkl')
 
 print("All Model Saved Succefully!")
